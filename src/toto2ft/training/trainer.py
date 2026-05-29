@@ -145,6 +145,9 @@ def train(
 
     log: list[dict] = []
     step = 0
+    best_val_loss = float("inf")
+    patience_count = 0
+    stopped_early = False
 
     while step < config.num_steps:
         for batch in train_loader:
@@ -208,7 +211,30 @@ def train(
                 entry["val_loss"] = val_loss
                 logger.info("         val_loss=%.4f", val_loss)
 
+                # Early stopping
+                if config.early_stopping_patience > 0:
+                    if val_loss < best_val_loss - 1e-6:
+                        best_val_loss = val_loss
+                        patience_count = 0
+                    else:
+                        patience_count += 1
+                        logger.info(
+                            "         patience %d/%d (best=%.4f)",
+                            patience_count, config.early_stopping_patience, best_val_loss,
+                        )
+                    if patience_count >= config.early_stopping_patience:
+                        logger.info(
+                            "Early stopping at step %d — val_loss hasn't improved for %d evals",
+                            step, config.early_stopping_patience,
+                        )
+                        log.append(entry)
+                        stopped_early = True
+                        break
+
             log.append(entry)
+
+        if stopped_early:
+            break
 
     return log
 

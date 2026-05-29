@@ -1,0 +1,56 @@
+# Gate 3 — Covariates
+# Multivariate LoRA (target + past/future covariates) must beat Chronos 2 LoRA
+# on the same real energy dataset.
+# Pass condition: ≥2–3% global WQL improvement over Chronos 2 LoRA,
+#                 OR ≥5% on stress slices (high-load, holiday, cold-snap events).
+
+gate: 3
+name: covariates
+status: pending
+
+model:
+  id: Datadog/Toto-2.0-313M
+  params: 313M
+
+training:
+  finetune_mode: lora
+  lora:
+    r: 8
+    lora_alpha: 16
+    target_modules: [in_proj, out_proj, fc1, fc2]
+    lora_dropout: 0.05
+  context_length: 672
+  prediction_length: 24
+  num_steps: 3000
+  batch_size: 32
+  learning_rate: 1.0e-4
+  warmup_steps: 300
+  early_stopping_patience: 5
+
+data:
+  type: real
+  frequency: 1h
+  schema:
+    target_cols: [load_mw]
+    past_covariate_cols:
+      - temperature_actual
+      - wind_generation_actual
+      - solar_generation_actual
+    future_covariate_cols:
+      - temperature_forecast
+      - wind_generation_forecast
+      - solar_generation_forecast
+      - hour_sin
+      - hour_cos
+      - day_of_week
+      - is_holiday
+    availability_col: availability_time   # leakage audit
+
+pass_condition:
+  wql_vs_chronos2_lora_pct: 2.0
+  stress_slice_wql_improvement_pct: 5.0
+
+baseline:
+  model: Chronos-2 LoRA (same covariates, same data)
+
+results: {}   # fill in after run

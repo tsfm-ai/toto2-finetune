@@ -1,0 +1,42 @@
+# Gate 2 — Adaptation
+# Show that 313M LoRA fine-tuning beats Toto 2 zero-shot on held-out energy data.
+# Pass condition: ≥3–5% improvement on WQL or MAE vs. zero-shot baseline.
+# Run: python examples/gate2_313m_comparison.py [--data /path/to/data.parquet]
+#      (defaults to synthetic 3-zone data if --data is omitted)
+
+gate: 2
+name: adaptation
+status: pending
+
+model:
+  id: Datadog/Toto-2.0-313M
+  params: 313M
+
+training:
+  finetune_mode: lora
+  lora:
+    r: 8
+    lora_alpha: 16
+    target_modules: [in_proj, out_proj, fc1, fc2]
+    lora_dropout: 0.05
+  context_length: 672         # 21 × 32 patches = 28 days ✓
+  prediction_length: 24       # day-ahead
+  num_steps: 2000
+  batch_size: 32
+  learning_rate: 1.0e-4
+  warmup_steps: 200
+  early_stopping_patience: 5  # stop if val_loss plateaus for 5 eval checks
+  device: mps                 # M4 Max; use cuda on H100
+
+data:
+  type: real_or_synthetic     # pass --data flag for real parquet; synthetic otherwise
+  frequency: 1h
+  train_end: "2024-01-01"
+  val_end: "2024-07-01"
+  # test: everything after val_end
+
+pass_condition:
+  wql_improvement_pct: 3.0   # ≥3% WQL improvement over zero-shot
+  mae_improvement_pct: 3.0   # ≥3% MAE improvement over zero-shot
+
+results: {}   # fill in after run

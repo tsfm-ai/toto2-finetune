@@ -1,0 +1,34 @@
+# Gate 4 — Scale
+# Test whether 1B LoRA materially beats 313M after cost normalization.
+# Only run if Gate 3 passes (313M proven useful on covariates).
+# Pass condition: ≥3% WQL improvement over 313M at ≤2× compute cost.
+
+gate: 4
+name: scale
+status: pending
+
+model:
+  id: Datadog/Toto-2.0-1B
+  params: 1B
+
+training:
+  finetune_mode: lora
+  lora:
+    r: 16                     # larger rank for 1B
+    lora_alpha: 32
+    target_modules: [in_proj, out_proj, fc1, fc2]
+    lora_dropout: 0.05
+  context_length: 672
+  prediction_length: 24
+  num_steps: 3000
+  batch_size: 16              # smaller batch to fit on A100/H100
+  learning_rate: 5.0e-5       # lower lr for larger model
+  warmup_steps: 300
+  early_stopping_patience: 5
+  device: cuda                # H100 for this scale
+
+pass_condition:
+  wql_vs_313m_pct: 3.0
+  max_compute_multiplier: 2.0
+
+results: {}   # fill in after run

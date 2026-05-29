@@ -1,0 +1,44 @@
+# Gate 1 — Plumbing
+# Verify the training stack runs end-to-end on CPU with the smallest model.
+# Pass condition: loss decreases, checkpoint saves/reloads, inference is NaN-free.
+# Run: python examples/quickstart_target_only.py
+
+gate: 1
+name: plumbing
+status: passing   # verified 2026-05-29: 91.2% loss drop on synthetic data
+
+model:
+  id: Datadog/Toto-2.0-22M
+  params: 22M
+
+training:
+  finetune_mode: lora
+  lora:
+    r: 8
+    lora_alpha: 16
+    target_modules: [in_proj, out_proj, fc1, fc2]
+    lora_dropout: 0.05
+  context_length: 96          # 3 × 32 patches ✓
+  prediction_length: 24       # padded to 32 internally
+  num_steps: 600
+  batch_size: 8
+  learning_rate: 1.0e-4
+  warmup_steps: 60
+  device: cpu                 # CPU intentional — proves plumbing, not speed
+
+data:
+  type: synthetic             # 3-zone sinusoidal load, no real data needed
+  n_timesteps: 3000
+  frequency: 1h
+
+pass_condition:
+  loss_drop_pct: 20           # Gate 1 bar is deliberately low (plumbing check)
+  no_nan: true
+  checkpoint_roundtrip: true
+
+results:
+  train_loss_first: 0.6243
+  train_loss_final: 0.0547
+  loss_drop_pct: 91.2
+  val_loss_final: 0.0757
+  trainable_params: 393600

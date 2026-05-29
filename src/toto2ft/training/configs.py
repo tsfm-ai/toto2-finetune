@@ -33,6 +33,9 @@ class TrainConfig:
     batch_size: int = 32
     log_every: int = 50
     eval_every: int = 200
+    # Early stopping: halt if val_loss doesn't improve for this many eval checks.
+    # Requires val_loader to be passed to train(). 0 = disabled.
+    early_stopping_patience: int = 0
 
     # Fine-tune mode
     finetune_mode: str = "lora"     # "lora" | "full" | "head"
