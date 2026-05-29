@@ -1,0 +1,36 @@
+# Gate 1: prove the training stack runs end-to-end.
+# Accuracy does not matter here — we just need loss to decrease and not explode.
+name: gate1_22m_full_finetune
+
+model:
+  model_id: Datadog/Toto-2.0-22M
+  dtype: float32
+
+data:
+  timestamp_col: timestamp
+  group_cols: [iso, zone]
+  target_cols: [load_mw]
+  frequency: 1h
+  train_end: "2023-06-30"
+  val_start: "2023-07-01"
+  val_end: "2023-12-31"
+
+training:
+  context_length: 96         # smaller for plumbing speed
+  prediction_length: 24
+  finetune_mode: full
+  learning_rate: 2.0e-6
+  num_steps: 200
+  batch_size: 16
+  warmup_steps: 20
+  grad_clip: 1.0
+  stride: 24
+
+# Gate 1 pass conditions:
+#   training loss decreases
+#   validation loss does not explode
+#   outputs.quantiles is finite
+#   checkpoint save/reload works
+#   walk-forward eval runs end-to-end
+
+output_dir: ./runs/gate1_22m_full_finetune

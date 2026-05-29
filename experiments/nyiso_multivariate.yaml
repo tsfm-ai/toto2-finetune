@@ -1,0 +1,65 @@
+# Gate 3 experiment: does Toto 2 multivariate LoRA beat Chronos 2 LoRA?
+name: nyiso_multivariate_313m_lora
+
+model:
+  model_id: Datadog/Toto-2.0-313M
+  dtype: float32
+
+data:
+  timestamp_col: timestamp
+  group_cols: [iso, zone]
+  target_cols: [load_mw]
+  # past_covariate_cols: observed at forecast time, NOT available for future
+  past_covariate_cols:
+    - temperature_actual
+    - wind_generation_actual
+    - solar_generation_actual
+  # future_covariate_cols: forecasted quantities available before forecast horizon
+  future_covariate_cols:
+    - temperature_forecast
+    - wind_generation_forecast
+    - solar_generation_forecast
+    - hour_sin
+    - hour_cos
+    - day_of_week
+    - is_holiday
+  frequency: 1h
+  train_end: "2023-12-31"
+  val_start: "2024-01-01"
+  val_end: "2024-06-30"
+  test_start: "2024-07-01"
+  # Leakage audit: all forecast covariates must have been available at forecast_creation_time
+  leakage_audit: true
+
+training:
+  context_length: 672
+  prediction_length: 24
+  finetune_mode: lora
+  learning_rate: 1.0e-5
+  num_steps: 2000
+  batch_size: 32
+  warmup_steps: 200
+  grad_clip: 1.0
+  stride: 24
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: null
+
+evaluation:
+  batch_size: 64
+  stride: 24
+
+baselines:
+  - zero_shot_toto2_313m
+  - target_only_toto2_313m_lora    # Gate 2 result
+  - chronos2_lora_same_covariates  # primary comparison
+  - public_iso_forecast
+
+# Gate 3 pass condition:
+# Toto 2 multivariate LoRA beats Chronos 2 LoRA by ≥2-3% WQL/MAE globally
+# OR ≥5% on stress/event slices without global degradation
+
+output_dir: ./runs/nyiso_multivariate_313m_lora

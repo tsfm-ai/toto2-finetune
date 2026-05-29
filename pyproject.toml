@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "toto2-finetune"
+version = "0.1.0"
+description = "Fine-tuning and evaluation harness for Toto 2 on energy time series"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.4.0",
+    "einops>=0.7.0",
+    "numpy>=1.26.0",
+    "pandas>=2.0.0",
+    "huggingface-hub>=0.20.0",
+    "safetensors>=0.4.0",
+    "peft>=0.12.0",
+    "tqdm",
+    "PyYAML",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-xdist",
+    "build",
+    "matplotlib",
+    "scikit-learn",
+]
+# Install toto separately:
+#   pip install "git+https://github.com/DataDog/toto.git#subdirectory=toto2"
+# It pulls gluonts[torch], jaxtyping, dd-unit-scaling from that same repo.
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+markers = [
+    "integration: requires a real Toto2 model download (deselect with -m 'not integration')",
+    "slow: slow tests",
+]

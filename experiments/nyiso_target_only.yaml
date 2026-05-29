@@ -1,0 +1,51 @@
+# Gate 2 experiment: does 313M LoRA improve over zero-shot on NYISO load?
+name: nyiso_target_only_313m_lora
+
+model:
+  model_id: Datadog/Toto-2.0-313M
+  dtype: float32
+
+data:
+  timestamp_col: timestamp
+  group_cols: [iso, zone]
+  target_cols: [load_mw]
+  past_covariate_cols: []
+  future_covariate_cols: []
+  frequency: 1h
+  train_end: "2023-12-31"
+  val_start: "2024-01-01"
+  val_end: "2024-06-30"
+  test_start: "2024-07-01"
+
+training:
+  context_length: 672        # 28 days
+  prediction_length: 24
+  finetune_mode: lora
+  learning_rate: 1.0e-5
+  num_steps: 1000
+  batch_size: 32
+  warmup_steps: 100
+  grad_clip: 1.0
+  stride: 24                 # non-overlapping windows
+
+lora:
+  r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  target_modules: null       # auto-discover attention projections
+
+evaluation:
+  batch_size: 64
+  stride: 24
+  stress_slices:
+    - is_holiday
+    - is_extreme_heat        # e.g. actual_temp > 90th pct
+    - is_peak_hour           # hour 14-20
+
+baselines:
+  - zero_shot_toto2_313m
+  - zero_shot_chronos2
+  - seasonal_naive
+  - public_iso_forecast
+
+output_dir: ./runs/nyiso_target_only_313m_lora
