@@ -66,13 +66,36 @@ def discover_linear_modules(model: nn.Module) -> list[str]:
 def discover_attention_leaf_names(model: nn.Module) -> list[str]:
     """
     Unique leaf names (last path segment) of attention-related Linear layers.
-    PEFT matches target_modules by leaf name when applied to custom models.
+    PEFT matches target_modules by leaf name.
+
+    Toto 2 uses fused in_proj (QKV combined) + out_proj, not split q/k/v.
     """
-    attention_keywords = {"q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out_proj"}
+    # Toto 2 actual names (verified against 22M/313M/1B checkpoints)
+    toto2_attn = {"in_proj", "out_proj"}
+    # Fallback for other architectures
+    generic_attn = {"q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out_proj"}
+    candidates = toto2_attn | generic_attn
+
     seen: set[str] = set()
     for name, m in model.named_modules():
         if isinstance(m, nn.Linear):
             leaf = name.split(".")[-1]
-            if leaf in attention_keywords:
+            if leaf in candidates:
                 seen.add(leaf)
     return sorted(seen)
+
+
+def get_patch_size(model: nn.Module) -> int:
+    """Return the model's patch size (Toto 2: always 32)."""
+    try:
+        return int(model.config.patch_size)
+    except AttributeError:
+        return 32
+
+
+def snap_context_to_patch(context_length: int, patch_size: int = 32) -> int:
+    """Round context_length UP to the nearest multiple of patch_size."""
+    remainder = context_length % patch_size
+    if remainder == 0:
+        return context_length
+    return context_length + (patch_size - remainder)
