@@ -14,8 +14,13 @@ class LoRAConfig:
     r: int = 8
     lora_alpha: int = 16
     lora_dropout: float = 0.05
-    # None → auto-discover attention projections from model
-    target_modules: list[str] | None = None
+    # Toto 2 uses fused in_proj (QKV) + out_proj for attention,
+    # plus fc1/fc2 for the FFN blocks. Together these cover ~393K
+    # trainable params on 22M and produce a clear learning signal.
+    # Set to None to fall back to auto-discovery.
+    target_modules: list[str] | None = field(
+        default_factory=lambda: ["in_proj", "out_proj", "fc1", "fc2"]
+    )
     bias: str = "none"   # "none" | "all" | "lora_only"
 
 

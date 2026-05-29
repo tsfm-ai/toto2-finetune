@@ -1,3 +1,7 @@
+# Compat shim must be first — patches F.scaled_dot_product_attention
+# before toto2 is imported so enable_gqa works on PyTorch < 2.5.
+from . import compat as _compat  # noqa: F401
+
 from .model.loader import load_toto2
 from .model.losses import pinball_loss
 from .model.lora import LoRAConfig, apply_lora, save_lora, load_lora
