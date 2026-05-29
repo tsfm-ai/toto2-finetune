@@ -66,9 +66,22 @@ def compare_zero_shot_vs_ft(
             device = torch.device("cpu")
     device = torch.device(device)
 
-    # ── Zero-shot baseline ─────────────────────────────────────────────────────
-    logger.info("Running zero-shot baseline with %s …", base_model_id)
     from ..model.loader import load_toto2
+
+    def _clear_device_cache() -> None:
+        if str(device) == "cuda":
+            torch.cuda.empty_cache()
+        elif str(device) == "mps":
+            torch.mps.empty_cache()
+
+    # ── Zero-shot baseline ─────────────────────────────────────────────────────
+    # Move the fine-tuned model off the accelerator before loading a second
+    # full-sized model — avoids having two copies on-device simultaneously.
+    logger.info("Offloading fine-tuned model to CPU for zero-shot comparison …")
+    ft_model.to("cpu")
+    _clear_device_cache()
+
+    logger.info("Running zero-shot baseline with %s …", base_model_id)
     zs_model = load_toto2(base_model_id, device=str(device), dtype=dtype)
 
     zs_metrics, _, _ = walk_forward_backtest(
@@ -83,12 +96,14 @@ def compare_zero_shot_vs_ft(
         stride=stride or prediction_length,
     )
 
-    # Free zero-shot weights before fine-tuned run
+    # Free zero-shot weights, then restore fine-tuned model to device
     del zs_model
-    if str(device) == "cuda":
-        torch.cuda.empty_cache()
+    _clear_device_cache()
 
     # ── Fine-tuned ─────────────────────────────────────────────────────────────
+    logger.info("Restoring fine-tuned model to %s …", device)
+    ft_model.to(device)
+
     logger.info("Running fine-tuned model …")
     ft_metrics, _, _ = walk_forward_backtest(
         model=ft_model,

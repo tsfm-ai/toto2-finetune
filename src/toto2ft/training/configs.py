@@ -21,8 +21,9 @@ class TrainConfig:
     patch_size: int = 32            # Toto 2 patch size; override if model differs
 
     # Optimizer
-    # 1e-4 is the empirically validated rate for LoRA on Toto 2 targets
-    # (in_proj, out_proj, fc1, fc2). Use 1e-5 for full fine-tuning.
+    # Default 1e-4 works for 22M LoRA. For 313M use 3e-5 (larger activations
+    # produce larger gradient magnitudes; 1e-4 diverges past warmup).
+    # Use 1e-5 for full fine-tuning.
     learning_rate: float = 1e-4
     weight_decay: float = 0.01
     grad_clip: float = 1.0

@@ -122,6 +122,21 @@ device_str = args.device or (
 device = torch.device(device_str)
 print(f"Device: {device}\n")
 
+# Batch sizes: conservative for 313M on MPS (activations are large).
+# 32 is safe for 22M; 313M needs more headroom.
+if device_str == "cpu":
+    train_batch = 4
+    eval_batch = 8
+elif device_str == "mps":
+    # M4 Max: 137GB unified memory, 40-core GPU.
+    # 313M weights ~1.2GB. Activations for batch 128 × context 672 ≈ 5GB.
+    # 90GB free → batch 128 is trivial.
+    train_batch = 128
+    eval_batch = 128
+else:  # cuda
+    train_batch = 64
+    eval_batch = 64
+
 config = TrainConfig(
     context_length=args.context_length,
     prediction_length=24,
@@ -132,9 +147,12 @@ config = TrainConfig(
         target_modules=["in_proj", "out_proj", "fc1", "fc2"],
     ),
     num_steps=args.num_steps,
-    batch_size=32 if device_str != "cpu" else 8,
-    learning_rate=1e-4,
-    warmup_steps=max(50, args.num_steps // 10),
+    batch_size=train_batch,
+    # 313M needs a lower lr than 22M — larger activations = larger gradient magnitudes.
+    # 1e-4 diverges at peak lr; 3e-5 is stable empirically.
+    learning_rate=3e-5,
+    warmup_steps=max(100, args.num_steps // 8),  # longer warmup for larger model
+    grad_clip=0.5,                                 # tighter clip vs default 1.0
     early_stopping_patience=5,
     log_every=100,
     eval_every=200,
@@ -147,7 +165,7 @@ val_ds   = WindowDataset(val_df,   schema, config.context_length, config.predict
 
 train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True,
                           collate_fn=collate_windows)
-val_loader   = DataLoader(val_ds,   batch_size=max(8, config.batch_size * 2),
+val_loader   = DataLoader(val_ds,   batch_size=eval_batch,
                           shuffle=False, collate_fn=collate_windows)
 
 print(f"Train windows: {len(train_ds):,}  Val windows: {len(val_ds):,}")
@@ -181,7 +199,7 @@ results = compare_zero_shot_vs_ft(
     context_length=config.context_length,
     prediction_length=config.prediction_length,
     device=device,
-    batch_size=max(8, config.batch_size * 2),
+    batch_size=eval_batch,
 )
 
 print_comparison_table(results)

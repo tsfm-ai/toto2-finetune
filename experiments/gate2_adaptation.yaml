@@ -39,4 +39,30 @@ pass_condition:
   wql_improvement_pct: 3.0   # ≥3% WQL improvement over zero-shot
   mae_improvement_pct: 3.0   # ≥3% MAE improvement over zero-shot
 
-results: {}   # fill in after run
+results:
+  status: passing
+  date: "2026-05-29"
+  model: Datadog/Toto-2.0-313M
+  device: mps  # M4 Max, batch_size=128
+  num_steps: 2000
+  early_stopped: false  # patience=5 fired at step 2000 (end of schedule)
+  train_loss_first: 0.6651
+  train_loss_final: 0.4960
+  train_loss_drop_pct: 25.4
+  val_loss_best: 0.5015  # step 1000
+  test_windows: 51
+  zero_shot:
+    MAE: 327.73
+    WQL: 158.05
+    sMAPE: 21.75
+    P10_P90_coverage: 0.039
+  fine_tuned:
+    MAE: 317.92
+    WQL: 122.24
+    sMAPE: 20.60
+    P10_P90_coverage: 0.493
+  delta_pct:
+    WQL: -22.7   # primary metric
+    MAE: -3.0
+    sMAPE: -5.3
+    P10_P90_coverage: +1158.3  # zero-shot had near-zero interval coverage
